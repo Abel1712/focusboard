@@ -3,8 +3,6 @@
 **Timers, to-dos, habits, goals, a diary and your phone's screen time, in one HTML file that runs on your laptop.**
 No account, no subscription, no server. Your data stays in your browser on your own PC.
 
-▶️ **[Watch the 50-second tour](docs/focusboard-reel.mp4)**
-
 ![Today page](docs/today.jpg)
 
 ## Why
@@ -97,7 +95,7 @@ for very private notes.
 | `install.ps1` | Creates the desktop shortcuts |
 | `sync/receive.ps1` | The laptop side of a phone sync (one-time key, QR code, local listener) |
 | `sync/sync.html`, `sync/qr.js` | The QR window |
-| `docs/` | Screenshots and the tour video |
+| `docs/` | Screenshots |
 
 ## License
 
