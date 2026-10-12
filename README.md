@@ -52,7 +52,7 @@ and its data stays separate from your normal browsing.
 
 ## Phone sync
 
-The phone side is a small Android app: **[FocusBoard Sync](https://github.com/Abel1712/focusboard-phone)**.
+The phone side is a small Android app: **[FocusBoard Sync](https://github.com/Abel1712/focusboard-sync)**.
 
 1. Install the app from its Releases page and give it usage access.
 2. On the laptop, double-click **Sync phone** (or press `Ctrl+Alt+P`). A QR code appears.

@@ -5,5 +5,5 @@ chrome-profile/
 sync/pair.js
 sync/status.js
 
-# the phone app is its own repository: github.com/Abel1712/focusboard-phone
+# the phone app is its own repository: github.com/Abel1712/focusboard-sync
 phone-app/
