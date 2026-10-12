@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sync phone</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#fff;--soft:#f7f6f3;--line:#ececea;--text:#37352f;--mute:#9b9a97;--good:#448361;--bad:#d44c47;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#191919;--soft:#232323;--line:#2f2f2f;--text:rgba(255,255,255,.87);--mute:#7d7d7d;--good:#4dab9a;--bad:#ff7369;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14.5px/1.55 Inter,ui-sans-serif,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:420px;margin:0 auto;padding:32px 24px;text-align:center}
+h1{font-size:26px;font-weight:700;letter-spacing:-.03em;margin:0}
+.sub{color:var(--mute);margin:6px 0 22px}
+.qr{width:248px;height:248px;margin:0 auto;padding:10px;background:#fff;border-radius:16px;border:1px solid var(--line);box-shadow:0 8px 30px rgba(0,0,0,.06);transition:opacity .3s,filter .3s}
+.qr svg{width:100%;height:100%;display:block}
+.qr.off{opacity:.15;filter:blur(2px)}
+.timer{margin-top:12px;font-size:12.5px;color:var(--mute);font-variant-numeric:tabular-nums}
+.bar{height:4px;background:var(--line);border-radius:99px;overflow:hidden;max-width:248px;margin:8px auto 0}
+.bar i{display:block;height:100%;background:var(--text);transition:width 1s linear}
+ol{text-align:left;margin:24px auto 0;padding:14px 16px 14px 34px;background:var(--soft);border:1px solid var(--line);border-radius:12px;font-size:13.5px}
+ol li{margin:4px 0}
+.status{margin-top:20px;font-weight:600;min-height:24px}
+.status.ok{color:var(--good)}.status.bad{color:var(--bad)}
+.summary{margin-top:12px;text-align:left;font-size:13.5px}
+.summary div{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line)}
+.summary span{color:var(--mute)}
+.small{font-size:12px;color:var(--mute);margin-top:16px}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+.check{width:64px;height:64px;border-radius:50%;background:var(--good);color:#fff;display:grid;place-items:center;margin:0 auto 14px;animation:pop .35s cubic-bezier(.2,.8,.3,1.3)}
+</style>
+<script src="qr.js"></script>
+<script src="pair.js"></script>
+</head>
+<body>
+<main id="app"></main>
+<script>
+const KEYP = 'focusboard.phone';
+const P = window.PAIR || null;
+const $ = id => document.getElementById(id);
+const fmt = ms => { const m = Math.round(ms / 6e4), h = Math.floor(m / 60); return h ? `${h}h ${m % 60}m` : `${m}m`; };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function page(inner) { $('app').innerHTML = inner; }
+
+if (!P || !P.qr) {
+  page(`<h1>Sync phone</h1><div class="sub">${esc(P && P.error ? P.error : 'Start a sync with the "Sync phone" shortcut on your desktop (or Ctrl+Alt+P).')}</div>`);
+} else {
+  page(`<h1>Sync phone</h1><div class="sub">Scan this with the FocusBoard Sync app</div>
+    <div class="qr" id="qr">${QR.svg(P.qr)}</div>
+    <div class="bar"><i id="bar" style="width:100%"></i></div>
+    <div class="timer" id="timer"></div>
+    <div class="status" id="status">Waiting for your phone…</div>
+    <ol><li>Open <b>FocusBoard Sync</b> on your phone</li><li>Tap <b>Scan QR code to sync</b></li><li>Point the camera at this code</li></ol>
+    <div class="small">Phone and laptop must be on the same Wi-Fi (or this laptop on your phone's hotspot).<br>This code works once and expires in 2 minutes. Laptop address: ${esc(P.ips)}</div>`);
+  tick(); poll();
+}
+
+function tick() {
+  if (!$('timer')) return;
+  const left = Math.max(0, P.expires - Date.now());
+  $('timer').textContent = left ? `Expires in ${Math.floor(left / 60000)}:${String(Math.floor(left / 1000) % 60).padStart(2, '0')}` : 'Expired';
+  $('bar').style.width = (left / 120000 * 100) + '%';
+  if (left) setTimeout(tick, 1000);
+}
+
+function poll() {
+  const s = document.createElement('script');
+  s.src = 'status.js?t=' + Date.now();
+  s.onload = s.onerror = () => { s.remove(); check(); };
+  document.head.appendChild(s);
+}
+
+function check() {
+  const st = window.SYNC;
+  if (st && st.session === P.session) {
+    if (st.state === 'done') return done(st.data);
+    if (st.state === 'timeout') return fail('The code expired. Run Sync phone again to get a new one.');
+    if (st.state === 'error') return fail(st.message || 'Something went wrong.');
+  }
+  if (Date.now() > P.expires + 8000) return fail('The code expired. Run Sync phone again to get a new one.');
+  setTimeout(poll, 1200);
+}
+
+function fail(msg) {
+  $('qr').classList.add('off');
+  $('status').className = 'status bad'; $('status').textContent = msg;
+}
+
+/* Merge the phone's sessions into FocusBoard's phone store (kept separate from the main data). */
+function merge(data) {
+  let S; try { S = JSON.parse(localStorage.getItem(KEYP)); } catch (e) {}
+  if (!S || !Array.isArray(S.apps)) S = { apps: [], names: [], s: [] };
+  const g = new Date(data.generated), from = new Date(g.getFullYear(), g.getMonth(), g.getDate() - (data.days - 1)).getTime();
+  const names = {};
+  S.apps.forEach((p, i) => names[p] = S.names[i]);
+  data.pk.forEach((p, i) => names[p] = data.names[i]);
+  const keep = S.s.filter(x => x[1] < from).map(x => [S.apps[x[0]], x[1], x[2]]);
+  const add = data.s.map(x => [data.pk[x[0]], x[1], x[2]]);
+  const cutoff = Date.now() - 90 * 864e5;
+  const all = keep.concat(add).filter(x => x[2] > cutoff).sort((a, b) => a[1] - b[1]);
+  const apps = [...new Set(all.map(x => x[0]))], idx = Object.fromEntries(apps.map((p, i) => [p, i]));
+  const out = { v: 1, device: data.device, lastSync: Date.now(), apps, names: apps.map(p => names[p] || p), s: all.map(x => [idx[x[0]], x[1], x[2]]) };
+  localStorage.setItem(KEYP, JSON.stringify(out));
+  return out;
+}
+
+function done(data) {
+  let out;
+  try { out = merge(data); } catch (e) { return fail('Received the data but could not save it: ' + e.message); }
+  const t0 = new Date(); t0.setHours(0, 0, 0, 0); const a = t0.getTime(), now = Date.now();
+  const by = {};
+  out.s.forEach(([i, s, e]) => { const s0 = Math.max(s, a), e0 = Math.min(e, now); if (e0 > s0) by[i] = (by[i] || 0) + (e0 - s0); });
+  const total = Object.values(by).reduce((x, y) => x + y, 0);
+  const top = Object.entries(by).sort((x, y) => y[1] - x[1]).slice(0, 5);
+  page(`<div class="check"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+    <h1>Synced</h1><div class="sub">${esc(out.device)} · FocusBoard is updated</div>
+    <div class="summary"><div><b>Phone today</b><b>${fmt(total)}</b></div>${top.map(([i, ms]) => `<div>${esc(out.names[i])}<span>${fmt(ms)}</span></div>`).join('')}</div>
+    <div class="small">You can close this window.</div>`);
+  setTimeout(() => window.close(), 6000);
+}
+</script>
+</body>
+</html>

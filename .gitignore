@@ -1,0 +1,9 @@
+# your private data: the browser profile the FocusBoard shortcut uses (all app data lives here)
+chrome-profile/
+
+# written while a phone sync runs (contain the last sync session and your phone's screen time)
+sync/pair.js
+sync/status.js
+
+# the phone app is its own repository: github.com/Abel1712/focusboard-phone
+phone-app/
